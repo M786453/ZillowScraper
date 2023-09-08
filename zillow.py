@@ -1,6 +1,7 @@
 import requests
 import json
 import pandas as pd
+import time
 
 class zillow:
 
@@ -19,7 +20,15 @@ class zillow:
 
         listing_response = requests.get(LISTING_URL, headers=self.headers)
 
-        listing_data = json.loads(listing_response.text)["cat2"]["searchResults"]["mapResults"]
+        try:
+
+            listing_data = json.loads(listing_response.text)["cat2"]["searchResults"]["mapResults"]
+
+        except:
+
+            print("Error occurred while retrieving listing:", listing_response.text)
+
+            listing_data = list()
         
         return listing_data
 
@@ -30,9 +39,20 @@ class zillow:
 
         property_details_response = requests.get(PROPERTY_DETAILS_URL, headers=self.headers)
 
-        property_details = json.loads(property_details_response.text)["data"]["property"]
+        phone = "n/a"
 
-        phone = property_details["listedBy"][0]["elements"][1]["text"]
+        try:
+        
+            property_details = json.loads(property_details_response.text)["data"]["property"]
+
+            phone = property_details["listedBy"][0]["elements"][1]["text"]
+
+        except:
+
+            print("Error occurred:", property_details_response.text)
+
+            phone = None
+
 
         return phone
 
@@ -50,6 +70,12 @@ class zillow:
 
         listing_data = self.getListingDetails()
 
+        if len(listing_data) == 0:
+            print("No listing found")
+            print("Wait for 10 mins...")
+            time.sleep(600)
+            self.scrape()
+
         counter = 1
 
         for property in listing_data:
@@ -59,10 +85,22 @@ class zillow:
                 property_address = property["address"]
                 property_owner_phone = self.getPropertyOwnerPhone(zpid)
 
+                # if get blocked, wait for 10 mins
+                if property_owner_phone == None:
+
+                    print("Wait for 10mins...")
+
+                    # wait for 10 mins to get unblocked
+                    time.sleep(600)
+
+                    property_owner_phone = self.getPropertyOwnerPhone(zpid)
+
+
+
                 # update properties data
                 self.properties_data["Property Address"].append(property_address)
                 self.properties_data["Owner Phone"].append(property_owner_phone)
-                
+
                 # store locally
                 self.store()
 
@@ -70,6 +108,7 @@ class zillow:
                 print("Property#"+ str(counter) + ":", str({"Address": property_address, "Phone": property_owner_phone}))
 
                 counter +=1 
+
             except Exception as e:
                 print(str(e))
 
