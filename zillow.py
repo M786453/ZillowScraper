@@ -1,5 +1,6 @@
 import requests
 import json
+import pandas as pd
 
 class zillow:
 
@@ -10,7 +11,7 @@ class zillow:
                     "Accept": "*/*"
                     }
         
-        self.properties_data = list()
+        self.properties_data = {"Property Address": [], "Owner Phone": []}
 
     def getListingDetails(self):
 
@@ -35,6 +36,16 @@ class zillow:
 
         return phone
 
+    def store(self):
+        
+        df = pd.DataFrame(self.properties_data)
+
+        writer = pd.ExcelWriter("zillow.xlsx",engine='xlsxwriter')
+
+        df.to_excel(writer,sheet_name="sheet1",index=False)
+
+        writer._save()        
+    
     def scrape(self):
 
         listing_data = self.getListingDetails()
@@ -48,12 +59,16 @@ class zillow:
                 property_address = property["address"]
                 property_owner_phone = self.getPropertyOwnerPhone(zpid)
 
-                # Property detals
-                property_details = {"address": property_address, "phone": property_owner_phone}
-                # record property data 
-                self.properties_data.append(property_details)
+                # update properties data
+                self.properties_data["Property Address"].append(property_address)
+                self.properties_data["Owner Phone"].append(property_owner_phone)
+                
+                # store locally
+                self.store()
+
                 #Log
-                print("Property#"+ str(counter) + ":", str(property_details))
+                print("Property#"+ str(counter) + ":", str({"Address": property_address, "Phone": property_owner_phone}))
+
                 counter +=1 
             except Exception as e:
                 print(str(e))
