@@ -9,6 +9,8 @@ class zillow:
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.141 Safari/537.36",
                     "Accept": "*/*"
                     }
+        
+        self.properties_data = list()
 
     def getListingDetails(self):
 
@@ -18,20 +20,12 @@ class zillow:
 
         listing_data = json.loads(listing_response.text)["cat2"]["searchResults"]["mapResults"]
         
-        counter = 1
-
-        for property in listing_data:
-
-            try:
-                print("ZPID#"+ str(counter)+":", property["zpid"])
-                counter +=1 
-            except Exception as e:
-                print(str(e))
+        return listing_data
 
     
-    def getPropertyDetails(self):
+    def getPropertyOwnerPhone(self, zpid):
 
-        PROPERTY_DETAILS_URL = "https://www.zillow.com/graphql/?extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%2263761f105f213460f11317ce8363575827a54a0ef622269b405e3e8fd479d1d4%22%7D%7D&variables=%7B%22zpid%22%3A50679473%2C%22platform%22%3A%22DESKTOP_WEB%22%2C%22formType%22%3A%22OPAQUE%22%2C%22contactFormRenderParameter%22%3A%7B%22zpid%22%3A50679473%2C%22platform%22%3A%22desktop%22%2C%22isDoubleScroll%22%3Atrue%7D%2C%22skipCFRD%22%3Afalse%7D"
+        PROPERTY_DETAILS_URL = "https://www.zillow.com/graphql/?extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%2263761f105f213460f11317ce8363575827a54a0ef622269b405e3e8fd479d1d4%22%7D%7D&variables=%7B%22zpid%22%3A"+ zpid + "%2C%22platform%22%3A%22DESKTOP_WEB%22%2C%22formType%22%3A%22OPAQUE%22%2C%22contactFormRenderParameter%22%3A%7B%22zpid%22%3A" + zpid + "%2C%22platform%22%3A%22desktop%22%2C%22isDoubleScroll%22%3Atrue%7D%2C%22skipCFRD%22%3Afalse%7D"
 
         property_details_response = requests.get(PROPERTY_DETAILS_URL, headers=self.headers)
 
@@ -39,11 +33,34 @@ class zillow:
 
         phone = property_details["listedBy"][0]["elements"][1]["text"]
 
-        print(phone)
+        return phone
+
+    def scrape(self):
+
+        listing_data = self.getListingDetails()
+
+        counter = 1
+
+        for property in listing_data:
+
+            try:
+                zpid = str(property["zpid"])
+                property_address = property["address"]
+                property_owner_phone = self.getPropertyOwnerPhone(zpid)
+
+                # Property detals
+                property_details = {"address": property_address, "phone": property_owner_phone}
+                # record property data 
+                self.properties_data.append(property_details)
+                #Log
+                print("Property#"+ str(counter) + ":", str(property_details))
+                counter +=1 
+            except Exception as e:
+                print(str(e))
 
 
 
 
-zillow().getPropertyDetails()
+zillow().scrape()
 
 
